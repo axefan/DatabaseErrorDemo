@@ -1,4 +1,4 @@
-This plugin demonstrates a problem that I've bee having.
+This plugin demonstrates a problem that I've been having.
 
 EbeanServer.save(Collection) starts failing when a list contains around 7000 objects.
 
