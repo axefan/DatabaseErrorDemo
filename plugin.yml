@@ -1,0 +1,10 @@
+name: DatabaseErrorDemo
+main: us.axefan.demo.DatabaseErrorDemo
+version: 0.1
+author: axefan
+database: true
+description: Demonstrates an error when writing lists of objects.
+commands:
+    ded:
+        description: Writes a list of objects to database.
+        usage: /ded <size>
