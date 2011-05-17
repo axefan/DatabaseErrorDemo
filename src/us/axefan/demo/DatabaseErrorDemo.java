@@ -150,7 +150,7 @@ public class DatabaseErrorDemo extends JavaPlugin{
 		}else{
 			this.sendMessage(sender, ChatColor.DARK_RED + "result: " + result);
 		}
-		List<DatabaseEntry> checkEntries = db.find(DatabaseEntry.class).findList();
+		List<DatabaseEntry> checkEntries = db.find(DatabaseEntry.class).where().eq("playerName", playerName).findList();
 		if (size == checkEntries.size()){
 			this.sendMessage(sender, ChatColor.DARK_GREEN + "check: " + checkEntries.size());
 		}else{
