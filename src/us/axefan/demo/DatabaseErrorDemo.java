@@ -3,6 +3,7 @@ package us.axefan.demo;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import javax.persistence.PersistenceException;
@@ -18,6 +19,7 @@ import com.avaje.ebean.EbeanServer;
 public class DatabaseErrorDemo extends JavaPlugin{
 
 	private String name;
+    private final HashMap<Player, PlayerSettings> playerSettings = new HashMap<Player, PlayerSettings>();
 	
 	@Override
 	public void onEnable(){
@@ -30,9 +32,7 @@ public class DatabaseErrorDemo extends JavaPlugin{
 	}
 	
 	@Override
-	public void onDisable(){
-		
-	}
+	public void onDisable(){}
 
     /*
      * Ensures that the database for this plugin is installed.
@@ -91,30 +91,59 @@ public class DatabaseErrorDemo extends JavaPlugin{
 	 * @param size - The size of the test;
 	 */
 	protected void test(CommandSender sender, int size) {
+		// Get settings.
+		Boolean batch = this.getBatchSetting(sender);
+		Boolean journal = this.getJournalSetting(sender);
+		Boolean cleanup = this.getCleanupSetting(sender);
+		this.sendMessage(sender, "batch: " + batch);
+		this.sendMessage(sender, "journal: " + journal);
+		this.sendMessage(sender, "cleanup: " + cleanup);
+		// Create some records.
+		String playerName = (sender instanceof Player) ? ((Player)sender).getName() : "console";
 		EbeanServer db = this.getDatabase();
-		// create some records.
-		int result;
+		if (journal) db.beginTransaction();
+		int result = 0;
 		List<DatabaseEntry> createEntries = new ArrayList<DatabaseEntry>();
 		for (int i=0; i<size; i++){
-			createEntries.add(new DatabaseEntry());
+			// Create new entry
+			DatabaseEntry entry = new DatabaseEntry();
+			entry.setPlayerName(playerName);
+			if (batch){
+				createEntries.add(entry);
+			}else{
+				try{
+					db.save(entry);
+					result++;
+				}catch(Exception ex){
+					if (journal) db.rollbackTransaction();
+					ex.printStackTrace();
+					this.sendMessage(sender, Messages.CreateEntryError);
+					if (sender instanceof Player) this.sendMessage(sender, Messages.CheckServerLogs);			
+					return;
+				}
+			}
 		}
-		try{
-			db.beginTransaction();
-			result = db.save(createEntries);
-		}catch(Exception ex){
-			db.rollbackTransaction();
-			ex.printStackTrace();
-			this.sendMessage(sender, Messages.CreateEntriesError);
-			if (sender instanceof Player) this.sendMessage(sender, Messages.CheckServerLogs);			
-			return;
+		// Save objects - batch mode.
+		if (batch){
+			try{
+				result = db.save(createEntries);
+			}catch(Exception ex){
+				if (journal) db.rollbackTransaction();
+				ex.printStackTrace();
+				this.sendMessage(sender, Messages.CreateEntriesError);
+				if (sender instanceof Player) this.sendMessage(sender, Messages.CheckServerLogs);			
+				return;
+			}
 		}
-		db.commitTransaction();
-		// check results.
+		if (journal) db.commitTransaction();
+		// Check results.
 		this.sendMessage(sender, ChatColor.DARK_GREEN + "expected: " + size);
-		if (createEntries.size() > 0){
-			this.sendMessage(sender, ChatColor.DARK_GREEN + "entries: " + createEntries.size());			
-		}else{
-			this.sendMessage(sender, ChatColor.DARK_GREEN + "entries: 0");			
+		if (batch){
+			if (createEntries.size() > 0){
+				this.sendMessage(sender, ChatColor.DARK_GREEN + "entries: " + createEntries.size());			
+			}else{
+				this.sendMessage(sender, ChatColor.DARK_GREEN + "entries: 0");			
+			}
 		}
 		if (size == result){
 			this.sendMessage(sender, ChatColor.DARK_GREEN + "result: " + result);
@@ -127,8 +156,9 @@ public class DatabaseErrorDemo extends JavaPlugin{
 		}else{
 			this.sendMessage(sender, ChatColor.DARK_RED + "check: " + checkEntries.size());
 		}
-		if (createEntries.size() == 0) return;
-		// delete the records
+		// Delete the records - always in batch with journaling
+		if (checkEntries.size() == 0) return;
+		if (!cleanup) return;
 		try{
 			db.beginTransaction();
 			result = db.delete(checkEntries);
@@ -140,18 +170,100 @@ public class DatabaseErrorDemo extends JavaPlugin{
 			return;
 		}
 		db.commitTransaction();
-		// check results
+		// Check delete results
 		if (checkEntries.size() == result){
 			this.sendMessage(sender, ChatColor.DARK_GREEN + "deleted: " + result);
 		}else{
 			this.sendMessage(sender, ChatColor.DARK_RED + "deleted: " + result);
 		}
+		// Should always be zero.
 		int check = db.find(DatabaseEntry.class).findRowCount();
 		if (check == 0){
 			this.sendMessage(sender, ChatColor.DARK_GREEN + "clear: " + check);
 		}else{
 			this.sendMessage(sender, ChatColor.DARK_RED + "clear: " + check);
 		}
+	}
+
+	/*
+	 * Indicates whether batch mode is enabled for a player.
+	 */
+	private Boolean getBatchSetting(CommandSender sender) {
+		Player player = null;
+		if (sender instanceof Player) player = (Player)sender;
+		if (!playerSettings.containsKey(player)) return true;
+		return playerSettings.get(player).batch;
+	}
+
+	/*
+	 * Indicates whether batch mode is enabled for a player.
+	 */
+	private Boolean getJournalSetting(CommandSender sender) {
+		Player player = null;
+		if (sender instanceof Player) player = (Player)sender;
+		if (!playerSettings.containsKey(player)) return true;
+		return playerSettings.get(player).journal;
+	}
+
+	/*
+	 * Indicates whether records will automatically removed.
+	 */
+	private Boolean getCleanupSetting(CommandSender sender) {
+		Player player = null;
+		if (sender instanceof Player) player = (Player)sender;
+		if (!playerSettings.containsKey(player)) return true;
+		return playerSettings.get(player).cleanup;
+	}
+	
+	/*
+	 * Toggles the batch setting.
+	 */
+	protected void toggleBatch(CommandSender sender) {
+		Player player = null;
+		if (sender instanceof Player) player = (Player)sender;
+		PlayerSettings settings = null;
+		if (!playerSettings.containsKey(player)){
+			settings = new PlayerSettings();
+		}else{
+			settings = playerSettings.get(player);
+		}
+		settings.batch = !settings.batch;
+		playerSettings.put(player, settings);
+		this.sendMessage(sender, "batch: " + settings.batch);
+	}
+	
+	/*
+	 * Toggles the journal setting.
+	 */
+	protected void toggleJournal(CommandSender sender) {
+		Player player = null;
+		if (sender instanceof Player) player = (Player)sender;
+		PlayerSettings settings = null;
+		if (!playerSettings.containsKey(player)){
+			settings = new PlayerSettings();
+		}else{
+			settings = playerSettings.get(player);
+		}
+		settings.journal = !settings.journal;
+		playerSettings.put(player, settings);
+		this.sendMessage(sender, "journal: " + settings.journal);
+	}
+	
+	/*
+	 * Toggles the cleanup setting.
+	 */
+	protected void toggleCleanup(CommandSender sender) {
+		Player player = null;
+		if (sender instanceof Player) player = (Player)sender;
+		PlayerSettings settings = null;
+		if (!playerSettings.containsKey(player)){
+			settings = new PlayerSettings();
+		}else{
+			settings = playerSettings.get(player);
+		}
+		settings.cleanup = !settings.cleanup;
+		playerSettings.put(player, settings);
+		this.sendMessage(sender, "cleanup: " + settings.cleanup);
 	}
 	
 }

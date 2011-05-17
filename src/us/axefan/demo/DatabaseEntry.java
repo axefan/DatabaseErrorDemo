@@ -14,8 +14,8 @@ public class DatabaseEntry {
     private int id;
     
     @NotNull
-    private int data = 0;
-
+    private String playerName;
+    
 	public void setId(int id) {
 		this.id = id;
 	}
@@ -24,12 +24,12 @@ public class DatabaseEntry {
 		return id;
 	}
 
-	public void setData(int data) {
-		this.data = data;
+	public void setPlayerName(String playerName) {
+		this.playerName = playerName;
 	}
 
-	public int getData() {
-		return data;
+	public String getPlayerName() {
+		return playerName;
 	}
 	
 }
