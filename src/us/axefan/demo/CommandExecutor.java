@@ -12,22 +12,16 @@ public class CommandExecutor implements org.bukkit.command.CommandExecutor {
 	public CommandExecutor(DatabaseErrorDemo instance) {
 		plugin = instance;
 	}
-
+	
 	@Override
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
 		label = label.toLowerCase();
 		if(!label.equals("ded")) return false;
 		if (args.length < 1)  return false;
 		String action = args[0].toLowerCase();
-		if (action.equals("batch") || action.equals("b")) {
-			plugin.toggleBatch(sender);
+		if (action.equals("tx")) {
+			plugin.toggleTransactions(sender);
 			return true;
-		}else if (action.equals("journal") || action.equals("j")){
-			plugin.toggleJournal(sender);
-			return true;			
-		}else if (action.equals("cleanup") || action.equals("c")){
-			plugin.toggleCleanup(sender);
-			return true;			
 		}else{
 			// Get the test size
 			int size;

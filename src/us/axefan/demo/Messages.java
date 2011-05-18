@@ -12,7 +12,6 @@ public class Messages {
 	// Error messages
 	public static final String IntegerError = ChatColor.RED + "Invalid value: {$value}! '{$setting}' must be an integer";
 	public static final String PositiveIntegerError = ChatColor.RED + "Invalid value: {$value}! '{$setting}' must be a positive integer";
-	public static final String CreateEntryError = ChatColor.RED + "Error! Unable to create entry.";
 	public static final String CreateEntriesError = ChatColor.RED + "Error! Unable to create entries.";
 	public static final String DeleteEntriesError = ChatColor.RED + "Error! Unable to delete entries.";
 	public static final String CheckServerLogs = ChatColor.RED + "Check the server log.";
